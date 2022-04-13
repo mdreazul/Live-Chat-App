@@ -11,6 +11,8 @@
             var socket;
 
             $(document).ready(function() {
+                var count = 0;
+                var nameprinted = false;
                 socket = io.connect('http://' + document.domain + ':' + location.port + '/chat_room');
                 socket.on('connect', function() {
                     socket.emit('join', {});
@@ -23,19 +25,58 @@
                     $('#timebox').scrollTop($('#timebox')[0].scrollHeight);
                 });
                 socket.on('message', function(data) {
-                    var today = new Date();
-                    var time = today.toString().slice(16,25);
+                    if (data.type == 'Norm') {
+                        if (count == 0 && nameprinted == false) {
+                            $('#chat').val($('#chat').val() + data.user + ': ' + data.msg);
+                            nameprinted = true;
+                        }
+                        else {
+                            $('#chat').val($('#chat').val() + data.msg);
+                        }
+                        count++;
+                    }
+                    else if (data.type == 'Bspace') {
+                        if (count != 0) {
+                            text = $('#chat').val();
+                            text = text.slice(0, -1);
+                            count--;
+                            $('#chat').val(text);
+                        }
+                    }
+                    else if (data.type == 'Ent') {
+                        count = 0;
+                        nameprinted = false;
+                        var today = new Date();
+                        var time = today.toString().slice(16,25);
 
-                    $('#timebox').val($('#timebox').val() + time + '\n');
-                    $('#timebox').scrollTop($('#timebox')[0].scrollHeight);
-                    
-                    $('#chat').val($('#chat').val() + data.msg + '\n');
-                    $('#chat').scrollTop($('#chat')[0].scrollHeight);
+                        $('#timebox').val($('#timebox').val() + time + '\n');
+                        $('#timebox').scrollTop($('#timebox')[0].scrollHeight);
+
+                        $('#chat').val($('#chat').val() + '\n');
+                        $('#chat').scrollTop($('#chat')[0].scrollHeight);
+                    }
+
                 });
                 $('#send').click(function(e) {
-                        text = $('#text').val();
                         $('#text').val('');
-                        socket.emit('text', {msg: text});
+                        count = 0;
+                        socket.emit('text', {type: 'Ent', msg: 'Enter'});
+                });
+
+                document.getElementById("text").addEventListener("keydown", function(event) {
+                    if (event.key == 'Backspace') {
+                        socket.emit('text', {type: 'Bspace', msg: event.key});
+                    }
+                    else if (event.key == 'Enter') {
+                        $('#text').val('');
+                        socket.emit('text', {type: 'Ent', msg: event.key});
+                    }
+                    else {
+                        if (event.key.length == 1) {
+                            socket.emit('text', {type: 'Norm', msg: event.key});
+                        }
+                        
+                    }
                 });
             });
 
@@ -56,8 +97,8 @@
             <h2 style="float: left; clear: both;"> Room: {{session['room']}}</h2>
             
             <div style="width: 50%; clear: both;">
-                <textarea style="float: left; width: 85%; resize: none; border-right: white;" id="chat" cols="70" rows="10" placeholder="No messages yet." readonly></textarea>
-                <textarea style="float: right; width: 15%; resize: none; border-left: white; text-align: right;" id="timebox" rows="10" readonly></textarea>
+                <textarea style="float: left; width: 80%; resize: none; border-right: white;" id="chat" cols="70" rows="10" placeholder="No messages yet." readonly></textarea>
+                <textarea style="float: right; width: 20%; resize: none; border-left: white; text-align: right;" id="timebox" rows="10" readonly></textarea>
             </div>
             <br>
             <br>
